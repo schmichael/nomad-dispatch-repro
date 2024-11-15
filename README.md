@@ -36,3 +36,10 @@ Use `-help` to see and adjust test parameters.
 
 The test does *not* cleanup after itself, but only creates 1 job (and a number
 of dead allocs).
+
+## example output
+
+With no errors as of 215630b2a785114d77bb648f24a17ee5bd0b1a64:
+```
+2024/11/14 16:09:00 500 done after 1m9.374s with 0 errors
+```
