@@ -128,31 +128,46 @@ func run(ctx context.Context, loops int, param string, errCh chan result, done f
 // backup is as close as possible to the internal code
 func backup(ctx context.Context, param string, client *api.Client) (any, error) {
 	const (
-		jobID        = "sleeper"
-		taskName     = "sleeper"
-		pollInterval = 3 * time.Second
+		jobID    = "sleeper"
+		taskName = "sleeper"
 	)
 	parameters := map[string]string{
 		"dur": param,
 	}
 	q := api.WriteOptions{}
-	job, _, err := client.Jobs().Dispatch(jobID, parameters, nil, "", q.WithContext(ctx))
+	job, wm, err := client.Jobs().Dispatch(jobID, parameters, nil, "", q.WithContext(ctx))
 	if err != nil {
 		return nil, fmt.Errorf("failed to dispatch nomad job: %v", err.Error())
 	}
 
-	tick := time.NewTicker(pollInterval)
-	defer tick.Stop()
+	// Allocs will always have an index greater than the dispatch was committed at
+	waitIndex := wm.LastIndex
+
 	for {
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
-		case <-tick.C:
+		default:
 			q := &api.QueryOptions{}
-			allocs, _, err := client.Jobs().Allocations(job.DispatchedJobID, true, q.WithContext(ctx))
+			q.WaitIndex = waitIndex
+			q.WaitTime = 10 * time.Second
+
+			allocs, qm, err := client.Jobs().Allocations(job.DispatchedJobID, true, q.WithContext(ctx))
 			if err != nil {
 				return nil, fmt.Errorf("unexpected error fetching allocation from dispatch ID %s: %v", job.DispatchedJobID, err.Error())
 			}
+
+			// When making a blocking query, we have to ensure a fresh result was
+			// returned because the query may have just timed out and returned stale
+			// results.
+			if qm.LastIndex <= waitIndex {
+				// No progress, loop!
+				continue
+			}
+
+			// Fresh results! Bump wait index
+			waitIndex = qm.LastIndex
+
 			if len(allocs) == 0 {
 				continue
 			}
