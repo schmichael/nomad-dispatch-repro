@@ -162,6 +162,10 @@ func backup(ctx context.Context, param string, client *api.Client) (any, error) 
 			// -- choosing to drill down into taskStates rather than relying on allocs[0].ClientStatus
 			// -- because we'll need other information like allocs[0].Failed to determine exit code
 			// -- and allocs[0].Events to provide context in case of errors
+			if len(allocs[0].TaskStates) == 0 {
+				// When Allocations are pending they do not yet have TaskStates
+				continue
+			}
 			state, ok := allocs[0].TaskStates[taskName]
 			if !ok {
 				out, _ := os.Create(fmt.Sprintf("%s.alloc.json", allocs[0].ID))
