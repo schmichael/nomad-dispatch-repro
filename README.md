@@ -43,3 +43,8 @@ With no errors as of 215630b2a785114d77bb648f24a17ee5bd0b1a64:
 ```
 2024/11/14 16:09:00 500 done after 1m9.374s with 0 errors
 ```
+
+With no errors and using blocking queries:
+```
+2024/11/14 17:30:44 500 done after 1m4.724s with 0 errors
+```
